@@ -67,45 +67,52 @@ function getTideType(date: Date): string {
   return "大潮";
 }
 
+// 1エントリ = 時刻4桁 + 潮位3桁 = 7文字 固定。これが4回繰り返される（28文字）。
+// 欠測は時刻"9999"・潮位"999"。
 function parseTideSection(s: string): { time: string; height: number }[] {
   const tides: { time: string; height: number }[] = [];
-  let i = 0;
-  while (i < s.length) {
-    while (i < s.length && s[i] === " ") i++;
-    if (i >= s.length) break;
-    if (!/\d/.test(s[i]) && s[i] !== "-") { i++; continue; }
-    const twoDigit = parseInt(s.slice(i, i + 2));
-    const timeLen = (twoDigit >= 10 && twoDigit <= 23) ? 4 : 3;
-    if (i + timeLen + 3 > s.length) break;
-    const timeStr = s.slice(i, i + timeLen);
-    const h = parseInt(timeStr.slice(0, -2));
-    const min = parseInt(timeStr.slice(-2));
-    const heightStr = s.slice(i + timeLen, i + timeLen + 3).trim();
-    const height = parseInt(heightStr);
-    if (h >= 0 && h <= 23 && min >= 0 && min <= 59 && !isNaN(height) && height >= -100 && height <= 350) {
+  for (let k = 0; k < 4; k++) {
+    const entry = s.slice(k * 7, k * 7 + 7);
+    if (entry.length < 7) break;
+
+    const timeStr   = entry.slice(0, 4).trim();   // "637" or "1430"
+    const heightStr = entry.slice(4, 7).trim();   // "183" / "-12" / "999"
+
+    if (timeStr === "9999" || heightStr === "999") continue;
+
+    const time   = parseInt(timeStr, 10);
+    const h      = Math.floor(time / 100);
+    const min    = time % 100;
+    const height = parseInt(heightStr, 10);
+
+    if (h >= 0 && h <= 23 && min >= 0 && min <= 59 && !isNaN(height)) {
       tides.push({
         time: `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`,
         height,
       });
     }
-    i += timeLen + 3;
   }
   return tides;
 }
 
+// JMA仕様: 1〜72=毎時潮位 / 73〜78=年月日 / 79〜80=地点記号 /
+// 81〜108=満潮(28) / 109〜136=干潮(28)
 function parseDayTides(text: string, yy: string, mm: string, dd: string): {
   high: { time: string; height: number }[];
-  low: { time: string; height: number }[];
+  low:  { time: string; height: number }[];
 } {
-  const target = `${yy} ${mm}${dd}WY`;
+  const target = `${yy}${mm}${dd}WY`;  // 例: "26 5 2WY"
   for (const line of text.split("\n")) {
-    if (!line.includes(target)) continue;
-    const idx = line.indexOf(target) + target.length;
-    const rest = line.slice(idx);
-    const sections = rest.split(/9{5,}/);
+    const idx = line.indexOf(target);
+    if (idx === -1) continue;
+
+    const tideStart = idx + target.length;
+    const highSec = line.slice(tideStart,        tideStart + 28);
+    const lowSec  = line.slice(tideStart + 28,   tideStart + 56);
+
     return {
-      high: parseTideSection(sections[0] ?? ""),
-      low:  parseTideSection(sections[1] ?? ""),
+      high: parseTideSection(highSec),
+      low:  parseTideSection(lowSec),
     };
   }
   return { high: [], low: [] };
@@ -118,14 +125,14 @@ async function getTideData(date: Date): Promise<{ kocho: string; mancho: string;
     const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
     const year = jst.getUTCFullYear();
-    const mm   = String(jst.getUTCMonth() + 1);
-    const dd   = String(jst.getUTCDate()).padStart(2, "0");
     const yy   = String(year).slice(2);
+    const mm   = String(jst.getUTCMonth() + 1).padStart(2, " ");  // スペース埋め
+    const dd   = String(jst.getUTCDate()).padStart(2, " ");        // スペース埋め
 
     const tomorrow = new Date(jst.getTime() + 24 * 60 * 60 * 1000);
-    const tmm = String(tomorrow.getUTCMonth() + 1);
-    const tdd = String(tomorrow.getUTCDate()).padStart(2, "0");
     const tyy = String(tomorrow.getUTCFullYear()).slice(2);
+    const tmm = String(tomorrow.getUTCMonth() + 1).padStart(2, " ");
+    const tdd = String(tomorrow.getUTCDate()).padStart(2, " ");
 
     const url = `https://www.data.jma.go.jp/kaiyou/data/db/tide/suisan/txt/${year}/WY.txt`;
     const res = await fetch(url);
