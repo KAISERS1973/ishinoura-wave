@@ -1,8 +1,11 @@
 const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN ?? "";
 const INSTAGRAM_ACCOUNT_ID   = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ?? "";
 
-export async function postToInstagram(videoUrl, caption) {
-  console.log("  Instagram: メディアコンテナ作成中...");
+const MAX_RETRIES   = 1;          // 最大リトライ回数（合計2試行）
+const RETRY_DELAYS  = [60_000];   // 試行N回目失敗後の待機ms
+
+async function attemptReelsPost(videoUrl, caption, attemptNum) {
+  console.log(`  Instagram: メディアコンテナ作成中... (試行 ${attemptNum})`);
   const containerRes = await fetch(
     `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media`,
     {
@@ -51,8 +54,25 @@ export async function postToInstagram(videoUrl, caption) {
   return published.id;
 }
 
-export async function postToStories(videoUrl) {
-  console.log("  Stories: メディアコンテナ作成中...");
+export async function postToInstagram(videoUrl, caption) {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
+    try {
+      return await attemptReelsPost(videoUrl, caption, attempt);
+    } catch (err) {
+      lastError = err;
+      console.error(`  ❌ Reels試行 ${attempt} 失敗: ${err.message}`);
+      if (attempt > MAX_RETRIES) break;
+      const wait = RETRY_DELAYS[attempt - 1];
+      console.log(`  ⏳ ${wait / 1000}秒待機してリトライします...`);
+      await new Promise(r => setTimeout(r, wait));
+    }
+  }
+  throw new Error(`Instagram投稿が${MAX_RETRIES + 1}回試行しても失敗: ${lastError.message}`);
+}
+
+async function attemptStoriesPost(videoUrl, attemptNum) {
+  console.log(`  Stories: メディアコンテナ作成中... (試行 ${attemptNum})`);
   const containerRes = await fetch(
     `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media`,
     {
@@ -97,4 +117,21 @@ export async function postToStories(videoUrl) {
   const published = await publishRes.json();
   if (!published.id) throw new Error(`Stories投稿失敗: ${JSON.stringify(published)}`);
   return published.id;
+}
+
+export async function postToStories(videoUrl) {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
+    try {
+      return await attemptStoriesPost(videoUrl, attempt);
+    } catch (err) {
+      lastError = err;
+      console.error(`  ❌ Stories試行 ${attempt} 失敗: ${err.message}`);
+      if (attempt > MAX_RETRIES) break;
+      const wait = RETRY_DELAYS[attempt - 1];
+      console.log(`  ⏳ ${wait / 1000}秒待機してリトライします...`);
+      await new Promise(r => setTimeout(r, wait));
+    }
+  }
+  throw new Error(`Stories投稿が${MAX_RETRIES + 1}回試行しても失敗: ${lastError.message}`);
 }
