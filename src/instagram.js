@@ -25,11 +25,11 @@ export async function postToInstagram(videoUrl, caption) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
     status = s.status_code;
-    console.log(`  Status: ${status} (${i + 1}/30)`);
+    console.log(`  Status: ${status} (${i + 1}/30)${s.status ? ` | ${s.status}` : ""}`);
     if (status === "FINISHED") break;
     if (status === "ERROR") throw new Error(`動画処理エラー: ${JSON.stringify(s)}`);
   }
@@ -73,11 +73,11 @@ export async function postToStories(videoUrl) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
     status = s.status_code;
-    console.log(`  Stories Status: ${status} (${i + 1}/30)`);
+    console.log(`  Stories Status: ${status} (${i + 1}/30)${s.status ? ` | ${s.status}` : ""}`);
     if (status === "FINISHED") break;
     if (status === "ERROR") throw new Error(`Stories処理エラー: ${JSON.stringify(s)}`);
   }
