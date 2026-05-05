@@ -1,6 +1,11 @@
 name: Wave Watch
 on:
   workflow_dispatch:
+
+concurrency:
+  group: wave-watch
+  cancel-in-progress: false
+
 jobs:
   watch:
     runs-on: ubuntu-latest
