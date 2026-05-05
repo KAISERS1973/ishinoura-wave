@@ -157,8 +157,6 @@ execSync(
 );
 
 const publicVideoUrl = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${DAILY_RELEASE_TAG}/output.mp4`;
-const resolvedRes = await fetch(publicVideoUrl, { method: 'HEAD', redirect: 'follow' });
-const directVideoUrl = resolvedRes.url;
 
 const isAtama = currentHeight >= 1.6;
 
@@ -175,11 +173,11 @@ const caption = isAtama
     `${data.kochoFirst ? `干潮${data.kocho} 満潮${data.mancho}` : `満潮${data.mancho} 干潮${data.kocho}`} ${data.tideType}\n` +
     `#磯ノ浦 #サーフィン #波情報 #和歌山 #isonoura`;
 
-const postId = await postToInstagram(directVideoUrl, caption);
+const postId = await postToInstagram(publicVideoUrl, caption);
 console.log(`\n✅ 再投稿完了！ Post ID: ${postId}`);
 
 console.log("\nStories投稿中...");
-const storiesId = await postToStories(directVideoUrl);
+const storiesId = await postToStories(publicVideoUrl);
 console.log(`✅ Stories投稿完了！ Post ID: ${storiesId}`);
 
 console.log("\nCloudflare KV更新中...");
