@@ -1,6 +1,11 @@
 name: Daily Wave Post
 on:
   workflow_dispatch:
+
+concurrency:
+  group: daily-post
+  cancel-in-progress: false
+
 jobs:
   post:
     runs-on: ubuntu-latest
