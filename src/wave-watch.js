@@ -122,7 +122,7 @@ const voicePath  = path.join(TMP, "voice.wav");
 const outputVideo = path.join(TMP, "output.mp4");
 
 const videoUrl = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${VIDEOS_RELEASE_TAG}/${videoFile}`;
-execSync(`curl -fL -o "${inputVideo}" "${videoUrl}"`, { stdio: "inherit" });
+execSync(`curl -fL --retry 3 --retry-delay 5 --retry-all-errors -o "${inputVideo}" "${videoUrl}"`, { stdio: "inherit" });
 
 const voiceText =
   `${data.dateTextDetail}の磯ノ浦は${data.weather}！` +
