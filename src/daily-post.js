@@ -126,7 +126,7 @@ console.log(`  字幕: ${line1} / ${line2} / ${line3} / ${line4}`);
 console.log(`\n[2/6] 動画ダウンロード: ${videoFile}`);
 const inputVideo = path.join(TMP, "input.mp4");
 const videoUrl = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${VIDEOS_RELEASE_TAG}/${videoFile}`;
-execSync(`curl -fL -o "${inputVideo}" "${videoUrl}"`, { stdio: "inherit" });
+execSync(`curl -fL --retry 3 --retry-delay 5 --retry-all-errors -o "${inputVideo}" "${videoUrl}"`, { stdio: "inherit" });
 
 console.log("\n[3/6] Cloud TTS で音声生成中...");
 const voiceText =
@@ -170,9 +170,7 @@ execSync(
   { stdio: "inherit" }
 );
 const publicVideoUrl = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${DAILY_RELEASE_TAG}/output.mp4`;
-const resolvedRes = await fetch(publicVideoUrl, { method: 'HEAD', redirect: 'follow' });
-const directVideoUrl = resolvedRes.url;
-console.log(`  直接URL: ${directVideoUrl}`);
+console.log(`  公開URL: ${publicVideoUrl}`);
 
 console.log("\n[6/6] Instagram に投稿中...");
 
@@ -191,11 +189,11 @@ const caption = isAtama
     `${data.kochoFirst ? `干潮${data.kocho} 満潮${data.mancho}` : `満潮${data.mancho} 干潮${data.kocho}`} ${data.tideType}\n` +
     `#磯ノ浦 #サーフィン #波情報 #和歌山 #isonoura`;
 
-const postId = await postToInstagram(directVideoUrl, caption);
+const postId = await postToInstagram(publicVideoUrl, caption);
 console.log(`\n✅ 投稿完了！ Post ID: ${postId}`);
 
 console.log("\nStories投稿中...");
-const storiesId = await postToStories(directVideoUrl);
+const storiesId = await postToStories(publicVideoUrl);
 console.log(`✅ Stories投稿完了！ Post ID: ${storiesId}`);
 
 console.log("\nCloudflare KV更新中...");
