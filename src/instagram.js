@@ -1,13 +1,14 @@
 const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN ?? "";
 const INSTAGRAM_ACCOUNT_ID   = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ?? "";
 
-const MAX_RETRIES   = 1;          // 最大リトライ回数（合計2試行）
-const RETRY_DELAYS  = [60_000];   // 試行N回目失敗後の待機ms
+const GRAPH_API_VERSION = "v22.0";              // ← v20.0 から v22.0 に更新
+const MAX_RETRIES   = 1;
+const RETRY_DELAYS  = [60_000];
 
 async function attemptReelsPost(videoUrl, caption, attemptNum) {
   console.log(`  Instagram: メディアコンテナ作成中... (試行 ${attemptNum})`);
   const containerRes = await fetch(
-    `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media`,
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -28,9 +29,20 @@ async function attemptReelsPost(videoUrl, caption, attemptNum) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
+
+    // APIエラーが返ってきている場合は即throw
+    if (s.error) {
+      throw new Error(`ステータス取得エラー: ${JSON.stringify(s.error)}`);
+    }
+
+    // 未知のレスポンス形式の場合、初回は実体を可視化
+    if (!s.status_code && i === 0) {
+      console.log(`  ⚠️ 未知レスポンス: ${JSON.stringify(s)}`);
+    }
+
     status = s.status_code;
     console.log(`  Status: ${status} (${i + 1}/30)${s.status ? ` | ${s.status}` : ""}`);
     if (status === "FINISHED") break;
@@ -39,7 +51,7 @@ async function attemptReelsPost(videoUrl, caption, attemptNum) {
   if (status !== "FINISHED") throw new Error("タイムアウト: 動画処理が完了しませんでした");
   console.log("  投稿中...");
   const publishRes = await fetch(
-    `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media_publish`,
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media_publish`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,7 +86,7 @@ export async function postToInstagram(videoUrl, caption) {
 async function attemptStoriesPost(videoUrl, attemptNum) {
   console.log(`  Stories: メディアコンテナ作成中... (試行 ${attemptNum})`);
   const containerRes = await fetch(
-    `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media`,
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -93,9 +105,18 @@ async function attemptStoriesPost(videoUrl, attemptNum) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/v20.0/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
+
+    if (s.error) {
+      throw new Error(`Storiesステータス取得エラー: ${JSON.stringify(s.error)}`);
+    }
+
+    if (!s.status_code && i === 0) {
+      console.log(`  ⚠️ 未知レスポンス: ${JSON.stringify(s)}`);
+    }
+
     status = s.status_code;
     console.log(`  Stories Status: ${status} (${i + 1}/30)${s.status ? ` | ${s.status}` : ""}`);
     if (status === "FINISHED") break;
@@ -104,7 +125,7 @@ async function attemptStoriesPost(videoUrl, attemptNum) {
   if (status !== "FINISHED") throw new Error("タイムアウト: Stories処理が完了しませんでした");
   console.log("  Stories投稿中...");
   const publishRes = await fetch(
-    `https://graph.facebook.com/v20.0/${INSTAGRAM_ACCOUNT_ID}/media_publish`,
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media_publish`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
