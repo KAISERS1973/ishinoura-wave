@@ -1,7 +1,7 @@
 const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN ?? "";
 const INSTAGRAM_ACCOUNT_ID   = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ?? "";
 
-const GRAPH_API_VERSION = "v22.0";              // ← v20.0 から v22.0 に更新
+const GRAPH_API_VERSION = "v22.0";
 const MAX_RETRIES   = 1;
 const RETRY_DELAYS  = [60_000];
 
@@ -29,16 +29,14 @@ async function attemptReelsPost(videoUrl, caption, attemptNum) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
 
-    // APIエラーが返ってきている場合は即throw
     if (s.error) {
       throw new Error(`ステータス取得エラー: ${JSON.stringify(s.error)}`);
     }
 
-    // 未知のレスポンス形式の場合、初回は実体を可視化
     if (!s.status_code && i === 0) {
       console.log(`  ⚠️ 未知レスポンス: ${JSON.stringify(s)}`);
     }
@@ -105,7 +103,7 @@ async function attemptStoriesPost(videoUrl, attemptNum) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${INSTAGRAM_ACCOUNT_ID}/media/${container.id}?fields=status_code,status&access_token=${INSTAGRAM_ACCESS_TOKEN}`
     );
     const s = await statusRes.json();
 
